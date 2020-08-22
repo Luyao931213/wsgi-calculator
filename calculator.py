@@ -1,3 +1,5 @@
+import traceback
+
 """
 For your homework this week, you'll be creating a wsgi application of
 your own.
@@ -47,9 +49,47 @@ def add(*args):
 
     # TODO: Fill sum with the correct value, based on the
     # args provided.
-    sum = "0"
+    sum = 0
+    for i in args:
+        sum += int(i)
+    return str(sum)
 
-    return sum
+
+def subtract(*args):
+    result = args[0]
+    for i in args[1:]:
+        result = result - args[i]
+    total = int(result)
+    return str(total)
+
+
+def multiply(*args):
+    product = args[0]
+    for i in args[1:]:
+        product *= i
+    return str(product)
+
+
+def divide(*args):
+    quote = args[0]
+    for i in args[1:]:
+        quote/= i
+    return str(quote)
+
+def home_page:
+    """The home of this  web page"""
+    body = """
+    <h1>Calculator<h1/>
+    This calculator can do the following action:
+    <ul>
+        <li>add<li/>
+        <li>subtract<li/>
+        <li>multiply<li/>
+        <li>divide<li/>
+    <ul/>
+"""
+    return body
+
 
 # TODO: Add functions for handling more arithmetic operations.
 
@@ -63,8 +103,19 @@ def resolve_path(path):
     # examples provide the correct *syntax*, but you should
     # determine the actual values of func and args using the
     # path.
-    func = add
-    args = ['25', '32']
+    funcs = {'':home_page,
+            'add': add,
+            'subtract': subtract,
+            'multiply': multiply,
+            'divide': divide
+            }
+    path = path.split("/").strip("/")
+    func_name = path[0]
+    args = path[1:]
+    try:
+        func = funcs[func_name]
+    except KeyError:
+        raise NameError
 
     return func, args
 
@@ -76,9 +127,31 @@ def application(environ, start_response):
     #
     # TODO (bonus): Add error handling for a user attempting
     # to divide by zero.
-    pass
+    headers = [("Content-type", "text/html")]
+    try:
+        path = environ.get('PATH_INFO', None)
+        if path is None:
+            raise NameError
+        func, args = resolve_path(path)
+        body = func(*args)
+        status = "200 OK"
+    except NameError:
+        status ="404 not found"
+        body = "<h1>404 Not Found</h1>"
+    except Exception:
+        status = "500 Internal Server Error"
+        body = "<h1>Internal Server Error</h1>"
+        print(traceback.format_exc())
+
+    finally:
+        headers.append(('Content-length', str(len(body))))
+        start_response(status, headers)
+        return [body.encode('utf8')]
 
 if __name__ == '__main__':
     # TODO: Insert the same boilerplate wsgiref simple
     # server creation that you used in the book database.
-    pass
+    from wsgiref.simple_server import make_server
+
+    srv = make_server('localhost', 8080, application)
+    srv.serve_forever()
